@@ -73,20 +73,20 @@ def load_data(filepath):
         shuffle=True
     )
 
-    word_vectorizer = TfidfVectorizer(
+    word_vectorizer = TfidfVectorizer( # Text till siffror
         analyzer='word',
-        ngram_range=(1,2),
+        ngram_range=(1,2), # rangen är mellan ett ord och tvåpar
         max_features=50000,
-        max_df=0.5,
+        max_df=0.5, # Tar bort ord som finns i över 50% av alla texter, i engelskan är det exempelvis orden: This, The, Is, a och and.
         use_idf=True,
-        norm='l2'
+        norm='l2' # Normaliserar vektorerna
     )
 
     training_data = word_vectorizer.fit_transform(training_data).todense()
     validation_data = word_vectorizer.transform(validation_data).todense()
 
-    train_x = torch.from_numpy(np.array(training_data)).float()
-    train_y = torch.from_numpy(np.array(training_labels)).long()
+    train_x = torch.from_numpy(np.array(training_data)).float() # Gör från NumPy array till PyTorch Tensor. Vi sparar i float [2.0, 0,3. 0,6 etc]
+    train_y = torch.from_numpy(np.array(training_labels)).long() # Vi sparar i long [0, 1, 0 etc]
     val_x = torch.from_numpy(np.array(validation_data)).float()
     val_y = torch.from_numpy(np.array(validation_labels)).long()
 

@@ -12,13 +12,16 @@ from nltk.corpus import stopwords
 from nltk import word_tokenize
 from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, classification_report
 
+import nltk # new
+nltk.download('stopwords') # new
+
 def preprocess_pandas(data, columns):
     df_ = pd.DataFrame(columns=columns)
     data['Sentence'] = data['Sentence'].str.lower()
     data['Sentence'] = data['Sentence'].replace('[a-zA-Z0-9-_.]+@[a-zA-Z0-9-_.]+', '', regex=True)                      # remove emails
     data['Sentence'] = data['Sentence'].replace('((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}', '', regex=True)    # remove IP address
-    data['Sentence'] = data['Sentence'].str.replace('[^\w\s]','')                                                       # remove special characters
-    data['Sentence'] = data['Sentence'].replace('\d', '', regex=True)                                                   # remove numbers
+    data['Sentence'] = data['Sentence'].str.replace(r'[^\w\s]','')                                                       # remove special characters
+    data['Sentence'] = data['Sentence'].replace(r'\d', '', regex=True)                                                   # remove numbers
     for index, row in data.iterrows():
         word_tokens = word_tokenize(row['Sentence'])
         filtered_sent = [w for w in word_tokens if not w in stopwords.words('english')]
@@ -56,3 +59,35 @@ if __name__ == "__main__":
     train_y_tensor = torch.from_numpy(np.array(training_labels)).long()
     validation_x_tensor = torch.from_numpy(np.array(validation_data)).type(torch.FloatTensor)
     validation_y_tensor = torch.from_numpy(np.array(validation_labels)).long()
+
+def load_data(filepath):
+    data = pd.read_csv(filepath, delimiter='\t', header=None)
+    data.columns = ['Sentence', 'Class']
+    data['index'] = data.index
+    columns = ['index', 'Class', 'Sentence']
+    data = preprocess_pandas(data, columns)
+    training_data, validation_data, training_labels, validation_labels = train_test_split(
+        data['Sentence'].values.astype('U'), # Unicode string
+        data['Class'].values.astype(np.int32),
+        test_size=0.15,
+        shuffle=True
+    )
+
+    word_vectorizer = TfidfVectorizer(
+        analyzer='word',
+        ngram_range=(1,2),
+        max_features=50000,
+        max_df=0.5,
+        use_idf=True,
+        norm='l2'
+    )
+
+    training_data = word_vectorizer.fit_transform(training_data).todense()
+    validation_data = word_vectorizer.transform(validation_data).todense()
+
+    train_x = torch.from_numpy(np.array(training_data)).float()
+    train_y = torch.from_numpy(np.array(training_labels)).long()
+    val_x = torch.from_numpy(np.array(validation_data)).float()
+    val_y = torch.from_numpy(np.array(validation_labels)).long()
+
+    return train_x, train_y, val_x, val_y

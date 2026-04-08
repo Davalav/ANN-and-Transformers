@@ -11,10 +11,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus import stopwords
 from nltk import word_tokenize
 from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, classification_report
-
+from torch.nn.utils.rnn import pad_sequence
+from collections import defaultdict
 import nltk # new
 nltk.download('stopwords') # new
-
+# nltk.download('punkt_tab')
 def preprocess_pandas(data, columns):
     df_ = pd.DataFrame(columns=columns)
     data['Sentence'] = data['Sentence'].str.lower()
@@ -73,21 +74,44 @@ def load_data(filepath):
         shuffle=True
     )
 
-    word_vectorizer = TfidfVectorizer( # Text till siffror
-        analyzer='word',
-        ngram_range=(1,2), # rangen är mellan ett ord och tvåpar
-        max_features=50000,
-        max_df=0.5, # Tar bort ord som finns i över 50% av alla texter, i engelskan är det exempelvis orden: This, The, Is, a och and.
-        use_idf=True,
-        norm='l2' # Normaliserar vektorerna
-    )
+# Build vocabulary
+    word_to_idx = defaultdict(lambda: 0)  # 0 will be padding
+    idx = 1
+    for sentence in training_data:
+        for word in sentence.split():
+            if word not in word_to_idx:
+                word_to_idx[word] = idx
+                idx += 1
+    vocab_size = len(word_to_idx) + 1  # +1 for padding index 0
 
-    training_data = word_vectorizer.fit_transform(training_data).todense()
-    validation_data = word_vectorizer.transform(validation_data).todense()
+    # Convert sentences to sequences of word indices
+    def sentences_to_indices(sentences, word_to_idx):
+        seqs = []
+        for sentence in sentences:
+            seq = [word_to_idx[word] for word in sentence.split() if word in word_to_idx]
+            seqs.append(torch.tensor(seq, dtype=torch.long))
+        return pad_sequence(seqs, batch_first=True, padding_value=0)
 
-    train_x = torch.from_numpy(np.array(training_data)).float() # Gör från NumPy array till PyTorch Tensor. Vi sparar i float [2.0, 0,3. 0,6 etc]
-    train_y = torch.from_numpy(np.array(training_labels)).long() # Vi sparar i long [0, 1, 0 etc]
-    val_x = torch.from_numpy(np.array(validation_data)).float()
-    val_y = torch.from_numpy(np.array(validation_labels)).long()
+    train_x_tensor = sentences_to_indices(training_data, word_to_idx)
+    val_x_tensor   = sentences_to_indices(validation_data, word_to_idx)
 
-    return train_x, train_y, val_x, val_y
+    train_y_tensor = torch.tensor(training_labels, dtype=torch.long)
+    val_y_tensor   = torch.tensor(validation_labels, dtype=torch.long)
+
+    return train_x_tensor, train_y_tensor, val_x_tensor, val_y_tensor, vocab_size
+
+    #     word_vectorizer = TfidfVectorizer( # Text till siffror
+    #     analyzer='word',
+    #     ngram_range=(1,2), # rangen är mellan ett ord och tvåpar
+    #     max_features=50000,
+    #     max_df=0.5, # Tar bort ord som finns i över 50% av alla texter, i engelskan är det exempelvis orden: This, The, Is, a och and.
+    #     use_idf=True,
+    #     norm='l2' # Normaliserar vektorerna
+    # )
+    # training_data = word_vectorizer.fit_transform(training_data).todense()
+    # validation_data = word_vectorizer.transform(validation_data).todense()
+    # train_x = torch.from_numpy(np.array(training_data)).float() # Gör från NumPy array till PyTorch Tensor. Vi sparar i float [2.0, 0,3. 0,6 etc]
+    # train_y = torch.from_numpy(np.array(training_labels)).long() # Vi sparar i long [0, 1, 0 etc]
+    # val_x = torch.from_numpy(np.array(validation_data)).float()
+    # val_y = torch.from_numpy(np.array(validation_labels)).long()
+    # return train_x, train_y, val_x, val_y

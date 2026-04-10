@@ -34,71 +34,75 @@ def preprocess_pandas(data, columns):
     return data
 
 # If this is the primary file that is executed (ie not an import of another file)
-if __name__ == "__main__":
-    # get data, pre-process and split
-    data = pd.read_csv("amazon_cells_labelled.txt", delimiter='\t', header=None)
-    data.columns = ['Sentence', 'Class']
-    data['index'] = data.index                                          # add new column index
-    columns = ['index', 'Class', 'Sentence']
-    data = preprocess_pandas(data, columns)                             # pre-process
-    training_data, validation_data, training_labels, validation_labels = train_test_split( # split the data into training, validation, and test splits
-        data['Sentence'].values.astype('U'),
-        data['Class'].values.astype('int32'),
-        test_size=0.10,
-        random_state=0,
-        shuffle=True
-    )
+# if __name__ == "__main__":
+# get data, pre-process and split
+data = pd.read_csv("amazon_cells_labelled.txt", delimiter='\t', header=None)
+data.columns = ['Sentence', 'Class']
+data['index'] = data.index                                          # add new column index
+columns = ['index', 'Class', 'Sentence']
+data = preprocess_pandas(data, columns)                             # pre-process
+training_data, validation_data, training_labels, validation_labels = train_test_split( # split the data into training, validation, and test splits
+    data['Sentence'].values.astype('U'),
+    data['Class'].values.astype('int32'),
+    test_size=0.10,
+    random_state=0,
+    shuffle=True
+)
 
-    # vectorize data using TFIDF and transform for PyTorch for scalability
-    word_vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1,2), max_features=50000, max_df=0.5, use_idf=True, norm='l2')
-    training_data = word_vectorizer.fit_transform(training_data)        # transform texts to sparse matrix
-    training_data = training_data.todense()                             # convert to dense matrix for Pytorch
-    vocab_size = len(word_vectorizer.vocabulary_)
-    validation_data = word_vectorizer.transform(validation_data)
-    validation_data = validation_data.todense()
-    train_x_tensor = torch.from_numpy(np.array(training_data)).type(torch.FloatTensor)
-    train_y_tensor = torch.from_numpy(np.array(training_labels)).long()
-    validation_x_tensor = torch.from_numpy(np.array(validation_data)).type(torch.FloatTensor)
-    validation_y_tensor = torch.from_numpy(np.array(validation_labels)).long()
+# vectorize data using TFIDF and transform for PyTorch for scalability
+word_vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1,2), max_features=50000, max_df=0.5, use_idf=True, norm='l2')
+training_data = word_vectorizer.fit_transform(training_data)        # transform texts to sparse matrix
+training_data = training_data.todense()                             # convert to dense matrix for Pytorch
+vocab_size = len(word_vectorizer.vocabulary_)
+validation_data = word_vectorizer.transform(validation_data)
+validation_data = validation_data.todense()
+train_x_tensor = torch.from_numpy(np.array(training_data)).type(torch.FloatTensor)
+train_y_tensor = torch.from_numpy(np.array(training_labels)).long()
+validation_x_tensor = torch.from_numpy(np.array(validation_data)).type(torch.FloatTensor)
+validation_y_tensor = torch.from_numpy(np.array(validation_labels)).long()
 
-def load_data(filepath):
-    data = pd.read_csv(filepath, delimiter='\t', header=None)
-    data.columns = ['Sentence', 'Class']
-    data['index'] = data.index
-    columns = ['index', 'Class', 'Sentence']
-    data = preprocess_pandas(data, columns)
-    training_data, validation_data, training_labels, validation_labels = train_test_split(
-        data['Sentence'].values.astype('U'), # Unicode string
-        data['Class'].values.astype(np.int32),
-        test_size=0.15,
-        shuffle=True
-    )
+# def load_data(filepath):
+#     data = pd.read_csv(filepath, delimiter='\t', header=None)
+#     data.columns = ['Sentence', 'Class']
+#     data['index'] = data.index
+#     columns = ['index', 'Class', 'Sentence']
+#     data = preprocess_pandas(data, columns)
+#     training_data, validation_data, training_labels, validation_labels = train_test_split(
+#         data['Sentence'].values.astype('U'), # Unicode string
+#         data['Class'].values.astype(np.int32),
+#         test_size=0.15,
+#         shuffle=True
+#     )
 
-# Build vocabulary
-    word_to_idx = defaultdict(lambda: 0)  # 0 will be padding
-    idx = 1
-    for sentence in training_data:
-        for word in sentence.split():
-            if word not in word_to_idx:
-                word_to_idx[word] = idx
-                idx += 1
-    vocab_size = len(word_to_idx) + 1  # +1 for padding index 0
+# # Build vocabulary
+#     word_to_idx = defaultdict(lambda: 0)  # 0 will be padding
+#     idx = 1
+#     for sentence in training_data:
+#         for word in sentence.split():
+#             if word not in word_to_idx:
+#                 word_to_idx[word] = idx
+#                 idx += 1
+#     vocab_size = len(word_to_idx) + 1  # +1 for padding index 0
 
-    # Convert sentences to sequences of word indices
-    def sentences_to_indices(sentences, word_to_idx):
-        seqs = []
-        for sentence in sentences:
-            seq = [word_to_idx[word] for word in sentence.split() if word in word_to_idx]
-            seqs.append(torch.tensor(seq, dtype=torch.long))
-        return pad_sequence(seqs, batch_first=True, padding_value=0)
+#     # Convert sentences to sequences of word indices
+#     def sentences_to_indices(sentences, word_to_idx):
+#         seqs = []
+#         for sentence in sentences:
+#             seq = [word_to_idx[word] for word in sentence.split() if word in word_to_idx]
+#             seqs.append(torch.tensor(seq, dtype=torch.long))
+#         return pad_sequence(seqs, batch_first=True, padding_value=0)
 
-    train_x_tensor = sentences_to_indices(training_data, word_to_idx)
-    val_x_tensor   = sentences_to_indices(validation_data, word_to_idx)
+#     train_x_tensor = sentences_to_indices(training_data, word_to_idx)
+#     val_x_tensor   = sentences_to_indices(validation_data, word_to_idx)
 
-    train_y_tensor = torch.tensor(training_labels, dtype=torch.long)
-    val_y_tensor   = torch.tensor(validation_labels, dtype=torch.long)
+#     train_y_tensor = torch.tensor(training_labels, dtype=torch.long)
+#     val_y_tensor   = torch.tensor(validation_labels, dtype=torch.long)
 
-    return train_x_tensor, train_y_tensor, val_x_tensor, val_y_tensor, vocab_size
+#     return train_x_tensor, train_y_tensor, val_x_tensor, val_y_tensor, vocab_size
+
+
+
+
 
     #     word_vectorizer = TfidfVectorizer( # Text till siffror
     #     analyzer='word',

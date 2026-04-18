@@ -1,4 +1,0 @@
-Epoch 1/2, Train Loss: 0.6871, Val Loss: 0.6577
-Saved best model with validation loss: 0.6577
-Epoch 2/2, Train Loss: 0.5133, Val Loss: 0.2827
-Saved best model with validation loss: 0.2827

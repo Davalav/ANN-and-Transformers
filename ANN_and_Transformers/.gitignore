@@ -3,6 +3,7 @@ amazon_cells_labelled.txt_LARGE_25K.txt/
 BestModels_DistilBert.pth/
 BestModels_LSTM.pth/
 BestModels_1_1.pth/
+BestModel_GPT2.pth/
 
 *.pth
 *.txt

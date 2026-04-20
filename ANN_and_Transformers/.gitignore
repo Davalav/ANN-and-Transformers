@@ -4,6 +4,7 @@ BestModels_DistilBert.pth/
 BestModels_LSTM.pth/
 BestModels_1_1.pth/
 BestModel_GPT2.pth/
+BestModel_RoBerta.pth/
 
 *.pth
 *.txt
